@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SQLi Interactive Lab - Hotel System</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body onload="initLab()">
+
+    <header>
+        <h1>[ SQLi Interactive Lab ]</h1>
+        <p>Target: Hotel Management System</p>
+    </header>
+
+    <div class="container">
+        <div class="column">
+            <div class="panel">
+                <h2>Attacker Console</h2>
+                
+                <div class="tabs">
+                    <button class="tab-btn active" onclick="openTab(event, 'tab-login')">1. Auth Bypass</button>
+                    <button class="tab-btn" onclick="openTab(event, 'tab-union')">2. UNION</button>
+                    <button class="tab-btn" onclick="openTab(event, 'tab-update')">3. UPDATE</button>
+                    <button class="tab-btn" onclick="openTab(event, 'tab-blind')">4. BLIND SQLi</button>
+                </div>
+
+                <div id="tab-login" class="tab-content" style="display: block;">
+                    <div class="form-group">
+                        <label>Difficulty Level:</label>
+                        <select id="diff-login" onchange="autoReset()">
+                            <option value="easy">🟢 Easy (Vulnerable)</option>
+                            <option value="medium">🟡 Medium (WAF Active)</option>
+                            <option value="hard">🔴 Hard (Prepared Statements)</option>
+                        </select>
+                    </div>
+                    <div class="form-group"><label>Email:</label><input type="text" id="email" autocomplete="off"></div>
+                    <div class="form-group"><label>Password:</label><input type="password" id="password" autocomplete="new-password"></div>
+                    <button onclick="attemptLogin()">Execute Attack</button>
+                    <button class="hint-btn" onclick="toggleHint('hint-login')">💡 Analysis & Prevention</button>
+                    <div id="hint-login" class="hint-box">
+                        <b>[ATTACK ANALYSIS]</b><br>
+                        By injecting an apostrophe <code>'</code>, the attacker breaks the string. Adding <code>--</code> turns the rest of the query (the password check) into a comment.<br><br>
+                        <b>[MEDIUM: WAF PREVENTION]</b><br>
+                        The Firewall detects and drops queries containing the exact string <code>--</code>. <i>Bypass it by using block comments instead: <code>/*</code></i>.<br><br>
+                        <b>[HARD: ARCHITECTURAL PREVENTION]</b><br>
+                        <b>Prepared Statements</b> completely neutralize the attack. The database treats the input strictly as a literal string (data), never as executable SQL code.
+                    </div>
+                </div>
+
+                <div id="tab-union" class="tab-content">
+                    <div class="form-group">
+                        <label>Difficulty Level:</label>
+                        <select id="diff-union" onchange="autoReset()">
+                            <option value="easy">🟢 Easy (Vulnerable)</option>
+                            <option value="medium">🟡 Medium (WAF Active)</option>
+                            <option value="hard">🔴 Hard (Prepared Statements)</option>
+                        </select>
+                    </div>
+                    <div class="form-group"><label>Search Room Type:</label><input type="text" id="roomName" autocomplete="off"></div>
+                    <button onclick="attemptSearch()">Execute Attack</button>
+                    <button class="hint-btn" onclick="toggleHint('hint-union')">💡 Analysis & Prevention</button>
+                    <div id="hint-union" class="hint-box">
+                        <b>[ATTACK ANALYSIS]</b><br>
+                        The <code>UNION</code> operator appends results from a hidden table (Client Details) to the original query result (Rooms).<br><br>
+                        <b>[MEDIUM: WAF PREVENTION]</b><br>
+                        The Firewall blocks the exact keyword <code>UNION</code>. <i>Bypass it via Case Manipulation: <code>uNiOn</code></i>.<br><br>
+                        <b>[HARD: ARCHITECTURAL PREVENTION]</b><br>
+                        <b>Prepared Statements</b> bind the input as a single parameter. The database will literally search for a room named "x' UNION SELECT...", returning zero results safely.
+                    </div>
+                </div>
+
+                <div id="tab-update" class="tab-content">
+                    <div class="form-group">
+                        <label>Difficulty Level:</label>
+                        <select id="diff-update" onchange="autoReset()">
+                            <option value="easy">🟢 Easy (Vulnerable)</option>
+                            <option value="medium">🟡 Medium (WAF Active)</option>
+                            <option value="hard">🔴 Hard (Prepared Statements)</option>
+                        </select>
+                    </div>
+                    <div class="form-group"><label>Target Email:</label><input type="text" id="targetEmail" autocomplete="off"></div>
+                    <div class="form-group"><label>New Password:</label><input type="text" id="newPassword" autocomplete="new-password"></div>
+                    <button onclick="attemptUpdate()">Execute Attack</button>
+                    <button class="hint-btn" onclick="toggleHint('hint-update')">💡 Analysis & Prevention</button>
+                    <div id="hint-update" class="hint-box">
+                        <b>[ATTACK ANALYSIS]</b><br>
+                        Injecting <code>OR '1'='1'</code> forces the WHERE clause to evaluate to TRUE for every single row in the database, updating all users' passwords simultaneously.<br><br>
+                        <b>[MEDIUM: WAF PREVENTION]</b><br>
+                        The Firewall blocks the exact keyword <code> OR </code>. <i>Bypass it using mixed case: <code> oR </code></i>.<br><br>
+                        <b>[HARD: ARCHITECTURAL PREVENTION]</b><br>
+                        <b>Prepared Statements</b> ensure the logic cannot be altered. It will search for a user whose literal email address is "x' OR '1'='1", which doesn't exist.
+                    </div>
+                </div>
+
+                <div id="tab-blind" class="tab-content">
+                    <div class="form-group">
+                        <label>Difficulty Level:</label>
+                        <select id="diff-blind" onchange="autoReset()">
+                            <option value="easy">🟢 Easy (Vulnerable)</option>
+                            <option value="medium">🟡 Medium (WAF Active)</option>
+                            <option value="hard">🔴 Hard (Prepared Statements)</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Check Room Availability (Number):</label>
+                        <input type="text" id="roomNumber" autocomplete="off">
+                    </div>
+                    <button onclick="attemptBlind()">Execute Attack</button>
+                    <button class="hint-btn" onclick="toggleHint('hint-blind')">💡 Analysis & Prevention</button>
+                    <div id="hint-blind" class="hint-box">
+                        <b>[ATTACK ANALYSIS]</b><br>
+                        Since no errors are shown, the attacker asks True/False questions (e.g., "Is the first letter 'S'?"). The binary response (Found / Not Found) reveals the data.<br><br>
+                        <b>[MEDIUM: WAF PREVENTION]</b><br>
+                        The WAF blocks the comment syntax <code>--</code>. <i>Bypass it using block comments: <code>/*</code> at the end of your query.</i><br><br>
+                        <b>[HARD: ARCHITECTURAL PREVENTION]</b><br>
+                        <b>Prepared Statements</b> neutralize the injection point completely, breaking the ability to inject logical conditions.
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="column">
+            <div class="panel">
+                <h2>Live Analysis & Response</h2>
+                <label>SQL Query executed by server:</label>
+                <div class="code-block" id="query-output">Waiting for commands...</div>
+                <br>
+                <label>Data returned by server:</label>
+                <div class="code-block" id="response-output">No results.</div>
+            </div>
+
+            <div class="panel">
+                <h2>Blue Team Security Monitor</h2>
+                <label>Live Server Logs:</label>
+                <div class="log-block" id="security-logs">
+                    Initializing monitoring...
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="full-panel">
+        <h2>System Database State (Table: Clienti)</h2>
+        <div class="table-actions">
+            <button id="reset-btn-ui" class="action-btn reset-btn" style="display: none;" onclick="resetDatabase()">⚠️ Reset</button>
+            <button class="action-btn refresh-btn" onclick="fetchDatabaseState()">↻ Refresh</button>
+        </div>
+        <div id="database-table-container">Loading data...</div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
